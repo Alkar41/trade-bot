@@ -35,7 +35,9 @@ MAX_RADAR_NOTIFY = 8
 STATE_FILE = "data/state.json"
 HOSTS = ["https://data-api.binance.vision", "https://api.binance.com"]
 STABLES = {"USDC", "FDUSD", "TUSD", "USDP", "DAI", "BUSD", "USDE", "USD1",
-           "EURI", "EUR", "AEUR", "XUSD", "UST", "USDS"}
+           "EURI", "EUR", "AEUR", "XUSD", "UST", "USDS",
+           # kripto gibi davranmayan varliklar (altin, hisse tokenlari): listeye ekleyebilirsin
+           "PAXG", "XAUT", "NVDAB", "SNDKB"}
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -205,7 +207,9 @@ def load_state():
     st.setdefault("radar", [])
     st.setdefault("radar_open", {})
     st.setdefault("seen", [])
-    st["signals"] = [s for s in st.get("signals", []) if "sym" in s]
+    st["signals"] = [s for s in st.get("signals", [])
+                     if "sym" in s and s["sym"][:-4] not in STABLES]
+    st["radar"] = [s for s in st["radar"] if s["sym"][:-4] not in STABLES]
     return st
 
 
