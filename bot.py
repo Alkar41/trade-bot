@@ -53,7 +53,8 @@ def http_json(path):
     for host in HOSTS:
         for _ in range(2):
             try:
-                req = urllib.request.Request(host + path, headers={"User-Agent": "signal-bot"})
+                url = host + urllib.parse.quote(path, safe="/?&=")
+                req = urllib.request.Request(url, headers={"User-Agent": "signal-bot"})
                 with urllib.request.urlopen(req, timeout=20) as r:
                     return json.load(r)
             except urllib.error.HTTPError as e:

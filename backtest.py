@@ -31,6 +31,14 @@ def fetch(sym):
     return sym, t[:-1], c[:-1], q[:-1]   # son (acik) mumu at
 
 
+def safe_fetch(sym):
+    try:
+        return fetch(sym)
+    except Exception as e:
+        print("hata", sym, e)
+        return sym, [], [], []
+
+
 def pct(a, b):
     return (b / a - 1) * 100
 
@@ -106,7 +114,7 @@ def main():
     if "BTCUSDT" not in syms:
         syms.append("BTCUSDT")
     with ThreadPoolExecutor(max_workers=6) as ex:
-        data = [d for d in ex.map(fetch, syms) if len(d[2]) > WIN + 30]
+        data = [d for d in ex.map(safe_fetch, syms) if len(d[2]) > WIN + 30]
     btc_d = [d for d in data if d[0] == "BTCUSDT"]
     if not btc_d:
         raise RuntimeError("BTC verisi alinamadi")
