@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1419">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Sinyal Botu</title>
+<style>
+:root{--bg:#0f1419;--card:#1a2029;--tx:#e8edf2;--mu:#8b97a5;--g:#2ecc71;--r:#ff5d5d;--b:#4da3ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif;padding:env(safe-area-inset-top) 12px calc(70px + env(safe-area-inset-bottom))}
+h1{font-size:18px;margin:14px 0 2px}h2{font-size:15px;margin:18px 0 6px}
+.mu{color:var(--mu);font-size:12px}.g{color:var(--g)}.r{color:var(--r)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.c{background:var(--card);border-radius:12px;padding:12px}.c b{display:block;font-size:22px;margin-top:2px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#151b22;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:14px 0;background:none;border:0;border-top:2px solid transparent;color:var(--mu);font-size:14px}
+nav .on{color:var(--tx);border-top-color:var(--b)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #232b35}
+.chips button{background:var(--card);color:var(--tx);border:0;border-radius:16px;padding:6px 12px;margin:0 6px 6px 0}
+.chips .on{background:var(--b);color:#000}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;text-align:right}td:first-child,th:first-child{text-align:left}
+svg{width:100%;height:110px;background:var(--card);border-radius:12px}
+.act{background:var(--b);border:0;border-radius:8px;padding:10px 14px;color:#000;margin-top:6px}
+textarea{width:100%;height:80px;background:var(--card);color:var(--tx);border:0;border-radius:8px;margin-top:6px}
+</style></head><body>
+<div id="app"></div>
+<nav><button data-t="o" class="on">Özet</button><button data-t="s">Sinyaller</button><button data-t="r">Radar</button></nav>
+<script>
+const $=s=>document.querySelector(s);let D=null,tab='o',flt='Tümü';
+const f=(v,d=1)=>v==null?'-':(v>0?'+':'')+v.toFixed(d)+'%';
+const cl=v=>v>0?'g':v<0?'r':'';
+const dt=t=>new Date(t).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const med=a=>{a=[...a].sort((x,y)=>x-y);const m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2};
+const sum=(a,k)=>a.reduce((x,s)=>x+s[k],0);
+function st(a){const n=a.length;if(!n)return null;const w=a.filter(s=>s.r>0).length;return{n,p:w/n*100,w,avg:sum(a,'r')/n,al:sum(a,'a')/n}}
+function load(d){D=d;try{localStorage.setItem('d',JSON.stringify(d))}catch(e){}render()}
+async function init(){
+ try{const r=await fetch('data/state.json?t='+Date.now());if(!r.ok)throw 0;load(await r.json());return}catch(e){}
+ try{const c=localStorage.getItem('d');if(c){load(JSON.parse(c));return}}catch(e){}
+ render()}
+function parseText(t){try{load(JSON.parse(t))}catch(e){alert('Dosya okunamadı')}}
+function loader(){return`<h1>Veri bulunamadı</h1><p class=mu>state.json dosyasını seç veya içeriğini yapıştır.</p>
+<input type=file id=fi accept=".json"><textarea id=ta placeholder="state.json içeriği"></textarea>
+<button class=act onclick="parseText($('#ta').value)">Yükle</button>`}
+function chart(a){
+ if(a.length<2)return'<p class=mu>Grafik için en az 2 sonuç gerekir.</p>';
+ let w=0;const p=a.map((s,i)=>{w+=s.r>0;return(i/(a.length-1)*300).toFixed(1)+','+(100-w/(i+1)*100).toFixed(1)}).join(' ');
+ return`<svg viewBox="0 0 300 100" preserveAspectRatio="none"><line x1="0" x2="300" y1="50" y2="50" stroke="#555" stroke-dasharray="4"/><polyline points="${p}" fill="none" stroke="#4da3ff" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><p class=mu>Birikimli isabet oranı (kesikli çizgi %50)</p>`}
+function card(t,v,c=''){return`<div class=c><span class=mu>${t}</span><b class="${c}">${v}</b></div>`}
+function over(){
+ const done=D.signals.filter(s=>s.r!=null).sort((a,b)=>a.t<b.t?-1:1);
+ const day=Math.min(30,Math.floor((Date.now()-new Date(D.start))/864e5)+1);
+ const all=st(done);
+ let h=`<h1>Sinyal Botu</h1><div class=mu>Gün ${day}/30 · ${D.signals.length} sinyal · ${D.radar.length} radar</div>`;
+ if(!all)return h+'<div class=c style="margin-top:12px">Henüz değerlendirilen sinyal yok. İlk sonuçlar sinyalden 24 saat sonra gelir.</div>';
+ h+=`<div class=grid>${card('İsabet','%'+all.p.toFixed(0),all.p>=50?'g':'r')}${card('Ort. getiri',f(all.avg,2),cl(all.avg))}${card('BTC\'ye göre',f(all.al,2),cl(all.al))}${card('Değerlendirilen',all.n)}</div>`;
+ h+='<table><tr><th></th><th>Adet</th><th>İsabet</th><th>Ort.</th><th>BTC\'ye göre</th></tr>';
+ for(const [n,a] of [['AL',done.filter(s=>s.g=='AL')],['SAT',done.filter(s=>s.g=='SAT')],['Güçlü (≥4)',done.filter(s=>Math.abs(s.sc)>=4)]]){
+  const x=st(a);if(x)h+=`<tr><td>${n}</td><td>${x.n}</td><td>%${x.p.toFixed(0)}</td><td class=${cl(x.avg)}>${f(x.avg,2)}</td><td class=${cl(x.al)}>${f(x.al,2)}</td></tr>`}
+ h+='</table><h2>Gelişim</h2>'+chart(done)+'<h2>Skora göre sonuç</h2><table><tr><th>Skor</th><th>Adet</th><th>İsabet</th><th>Ort.</th></tr>';
+ const sc=[...new Set(done.map(s=>s.sc))].sort((a,b)=>a-b);
+ for(const k of sc){const x=st(done.filter(s=>s.sc==k));h+=`<tr><td>${k>0?'+':''}${k}</td><td>${x.n}</td><td>%${x.p.toFixed(0)}</td><td class=${cl(x.avg)}>${f(x.avg,2)}</td></tr>`}
+ return h+'</table>'}
+function sigs(){
+ const F=['Tümü','AL','SAT','Açık','Doğru','Yanlış'];
+ let a=[...D.signals].sort((x,y)=>x.t<y.t?1:-1);
+ a=a.filter(s=>flt=='Tümü'||(flt=='Açık'?s.r==null:flt=='Doğru'?s.r>0:flt=='Yanlış'?s.r!=null&&s.r<=0:s.g==flt));
+ let h='<h1>Sinyaller</h1><div class=chips>'+F.map(x=>`<button class="${x==flt?'on':''}" onclick="flt='${x}';render()">${x}</button>`).join('')+'</div>';
+ if(!a.length)return h+'<p class=mu>Kayıt yok.</p>';
+ return h+a.slice(0,200).map(s=>`<div class=row><div><b>${s.sym.replace('USDT','')}</b> <span class="${s.g=='AL'?'g':'r'}">${s.g}</span> <span class=mu>skor ${s.sc>0?'+':''}${s.sc}</span><div class=mu>${dt(s.t)} · $${s.p}</div></div><b class="${s.r==null?'mu':cl(s.r)}">${s.r==null?'açık':f(s.r,2)}</b></div>`).join('')}
+function rad(){
+ let h='<h1>Radar</h1><p class=mu>Hacmi patlayan ama fiyatı henüz çok yükselmemiş coinler. Sonuçlar alım yönlüdür.</p>';
+ if(!D.radar.length)return h+'<div class=c>Henüz radar sinyali yok.</div>';
+ h+='<table><tr><th>Süre</th><th>Adet</th><th>Pozitif</th><th>≥+10%</th><th>Medyan</th><th>BTC\'ye g.</th></tr>';
+ for(const t of [24,72,168]){const v=D.radar.filter(s=>s['r'+t]!=null);if(!v.length)continue;
+  const r=v.map(s=>s['r'+t]);h+=`<tr><td>${t==168?'7g':t+'s'}</td><td>${v.length}</td><td>%${(r.filter(x=>x>0).length/v.length*100).toFixed(0)}</td><td>%${(r.filter(x=>x>=10).length/v.length*100).toFixed(0)}</td><td class=${cl(med(r))}>${f(med(r))}</td><td class=${cl(sum(v,'a'+t)/v.length)}>${f(sum(v,'a'+t)/v.length)}</td></tr>`}
+ h+='</table><h2>Son radar sinyalleri</h2>';
+ return h+[...D.radar].sort((x,y)=>x.t<y.t?1:-1).slice(0,100).map(s=>`<div class=row><div><b>${s.sym.replace('USDT','')}</b> <span class=mu>hacim ${s.x}x · 24s ${f(s.c)}</span><div class=mu>${dt(s.t)} · $${s.p}</div></div><div style="text-align:right;font-size:13px">${[24,72,168].map(t=>`<div class="${s['r'+t]==null?'mu':cl(s['r'+t])}">${t==168?'7g':t+'s'}: ${s['r'+t]==null?'-':f(s['r'+t])}</div>`).join('')}</div></div>`).join('')}
+function render(){
+ $('#app').innerHTML=!D?loader():tab=='o'?over():tab=='s'?sigs():rad();
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
+ const fi=$('#fi');if(fi)fi.onchange=()=>fi.files[0].text().then(parseText)}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render();scrollTo(0,0)});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+init();
+</script></body></html>
